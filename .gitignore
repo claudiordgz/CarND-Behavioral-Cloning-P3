@@ -1,0 +1,13 @@
+data
+models
+.ipynb_checkpoints
+bottlenecks
+.ipynb_checkpoints
+__pycache__
+bvlc-alexnet.npy
+train.p
+.vscode
+*.p
+*.npy
+pip
+*.zip
