@@ -176,7 +176,7 @@ def get_images(p='./data'):
         To shuffle our dataset we need the full list of images.
     """
     logfile = processing.data_validation(p)
-    df = read_log(logfile, skiprows=1)
+    df = read_log(logfile, skiprows=2)
     N = len(df.index)
     D_c = {
         0: 'left',
@@ -185,6 +185,7 @@ def get_images(p='./data'):
     }
     N_c = len(D_c) # left, right center cameras
     columns_w_features = processing.get_names()[N_c:]
+    df[columns_w_features] = df[columns_w_features].astype('float32')
     D_t = {
         0: original,
         1: low_brightness,
