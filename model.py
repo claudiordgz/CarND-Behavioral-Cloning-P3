@@ -67,16 +67,21 @@ def get_batch_size(total_images):
     """ We want our set of images to be divisible by the
         epochs
     """
-    for i in range(16, 256):
+    epochs = 16
+    for i in range(16, 512):
         if total_images % i == 0:
-            return i
-    return 128
+            epochs = i
+    return epochs
 
 
 def samples(epochs, total):
     """ We want the samples to be a multiple of the EPOCHS
     """
-    return total - (total % epochs)
+    samples, i = epochs, 10
+    while samples < 50000:
+        samples = epochs * i
+        i += 2
+    return samples
 
 
 def main():
@@ -95,7 +100,7 @@ def main():
     VALIDATION_SAMPLES_PER_EPOCH = samples(VALIDATION_BATCH_SIZE, len(x_test))
     EVALUATION_BATCH = get_batch_size(len(x_evaluate))
     EVALUATION_SAMPLES = samples(EVALUATION_BATCH, len(x_evaluate))
-    EPOCHS = 15
+    EPOCHS = 10
     names = ['IMAGES IN TRAINING', 'IMAGES IN VALIDATION SET',
              'IMAGES IN EVALUATION SET',
              'BATCH SIZE', 'SAMPLES PER EPOCH', 'VALIDATION BATCH SIZE',
