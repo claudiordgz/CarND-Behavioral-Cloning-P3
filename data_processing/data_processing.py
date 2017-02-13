@@ -150,11 +150,11 @@ def flip_gamma_correction_25(image_path, apply_normalize=False): return flip_and
 def adjust_angle_per_camera(features, camera):
     """ create adjusted steering measurements for the side camera images
     """
-    correction = 0.13
+    correction = 0.25
     if camera == 'left':
-        features[0] = features[-1] + correction
+        features[0] = features[0] + correction
     elif camera == 'right':
-        features[0] = features[-1] - correction
+        features[0] = features[0] - correction
     return features
 
 
@@ -163,7 +163,7 @@ def adjust_properties_per_transform(features, camera, transform):
     """
     # Flipping - Take the opposite sign and invert left/right cameras
     if 'flip' in transform.__name__:
-        features[0] = features[-1] * - 1
+        features[0] = features[0] * - 1
         if camera == 'right':
             camera = 'left'
         elif camera == 'left':
