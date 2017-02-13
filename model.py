@@ -73,15 +73,10 @@ def get_batch_size(total_images):
     return 128
 
 
-def factor(epochs):
+def samples(epochs, total):
     """ We want the samples to be a multiple of the EPOCHS
     """
-    factor = 1
-    total_samples = epochs * factor
-    while total_samples < 1000:
-        factor += 1
-        total_samples = epochs * factor
-    return factor
+    return total - (total % epochs)
 
 
 def main():
@@ -95,12 +90,12 @@ def main():
                   metrics=['accuracy'])
     # MAGIC NUMBERS
     BATCH_SIZE = get_batch_size(len(x_train))
-    SAMPLES_PER_EPOCH = BATCH_SIZE*factor(BATCH_SIZE)
+    SAMPLES_PER_EPOCH = samples(BATCH_SIZE, len(x_train))
     VALIDATION_BATCH_SIZE = get_batch_size(len(x_test))
-    VALIDATION_SAMPLES_PER_EPOCH = VALIDATION_BATCH_SIZE*factor(VALIDATION_BATCH_SIZE)
+    VALIDATION_SAMPLES_PER_EPOCH = samples(VALIDATION_BATCH_SIZE, len(x_test))
     EVALUATION_BATCH = get_batch_size(len(x_evaluate))
-    EVALUATION_SAMPLES = EVALUATION_BATCH*factor(EVALUATION_BATCH)
-    EPOCHS = 100
+    EVALUATION_SAMPLES = samples(EVALUATION_BATCH, len(x_evaluate))
+    EPOCHS = 15
     names = ['IMAGES IN TRAINING', 'IMAGES IN VALIDATION SET',
              'IMAGES IN EVALUATION SET',
              'BATCH SIZE', 'SAMPLES PER EPOCH', 'VALIDATION BATCH SIZE',
