@@ -51,16 +51,19 @@ def get_images_generator(images, image_getter, BATCH_SIZE):
     CHANNELS = 3
     batch_images = np.zeros((BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, CHANNELS))
     batch_features = np.zeros(BATCH_SIZE)
-    for i, image_index in enumerate(images):
+    i = 0
+    for image_index in images:
         image, features, transform, camera = image_getter(image_index)
         features, camera = adjust_properties_per_transform(features, camera, transform)
         payload = transform(image)
         features = adjust_angle_per_camera(features, camera)
-        batch_position = i % BATCH_SIZE
-        batch_images[batch_position] = payload
-        batch_features[batch_position] = features[0]
-        if batch_position+1 == BATCH_SIZE:
-            yield batch_images, batch_features
+        if payload is not None and features[0]:
+            batch_position = i % BATCH_SIZE
+            batch_images[batch_position] = payload
+            batch_features[batch_position] = features[0]
+            i += 1
+            if batch_position+1 == BATCH_SIZE:
+                yield batch_images, batch_features
 
 
 def get_batch_size(total_images):
