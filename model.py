@@ -59,7 +59,7 @@ def get_images_generator(images, image_getter, BATCH_SIZE):
         batch_position = i % BATCH_SIZE
         batch_images[batch_position] = payload
         batch_features[batch_position] = features[0]
-        if batch_position == BATCH_SIZE:
+        if batch_position+1 == BATCH_SIZE:
             yield batch_images, batch_features
 
 
@@ -90,7 +90,9 @@ def main():
     x_test, x_evaluate = train_test_split(x_test, test_size=0.4)
     x_train = shuffle(x_train)
     model = get_model()
-    model.compile('adam', 'categorical_crossentropy', ['accuracy'])
+    model.compile(optimizer='adam',
+                  loss='mse',
+                  metrics=['accuracy'])
     # MAGIC NUMBERS
     BATCH_SIZE = get_batch_size(len(x_train))
     SAMPLES_PER_EPOCH = BATCH_SIZE*factor(BATCH_SIZE)
