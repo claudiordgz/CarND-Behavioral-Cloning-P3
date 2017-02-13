@@ -90,7 +90,6 @@ def samples(epochs, total):
 def main():
     image_index_db, image_getter, batch_size = get_images('./data')
     x_train, x_test = train_test_split(image_index_db, test_size=0.4)
-    x_test, x_evaluate = train_test_split(x_test, test_size=0.4)
     x_train = shuffle(x_train)
     model = get_model()
     model.compile(optimizer='adam',
@@ -101,23 +100,17 @@ def main():
     SAMPLES_PER_EPOCH = samples(BATCH_SIZE, len(x_train))
     VALIDATION_BATCH_SIZE = get_batch_size(len(x_test))
     VALIDATION_SAMPLES_PER_EPOCH = samples(VALIDATION_BATCH_SIZE, len(x_test))
-    EVALUATION_BATCH = get_batch_size(len(x_evaluate))
-    EVALUATION_SAMPLES = samples(EVALUATION_BATCH, len(x_evaluate))
-    EPOCHS = 10
+    EPOCHS = 5
     names = ['IMAGES IN TRAINING', 'IMAGES IN VALIDATION SET',
-             'IMAGES IN EVALUATION SET',
              'BATCH SIZE', 'SAMPLES PER EPOCH', 'VALIDATION BATCH SIZE',
-             'VALIDATION SAMPLES PER EPOCH', 'EVALUATION BATCH SIZE',
-             'EVALUATION SAMPLES PER EPOCH']
-    magic_numbers = [len(x_train), len(x_test), len(x_evaluate),
+             'VALIDATION SAMPLES PER EPOCH']
+    magic_numbers = [len(x_train), len(x_test),
                      BATCH_SIZE, SAMPLES_PER_EPOCH, VALIDATION_BATCH_SIZE,
-                     VALIDATION_SAMPLES_PER_EPOCH, EVALUATION_BATCH,
-                     EVALUATION_SAMPLES]
+                     VALIDATION_SAMPLES_PER_EPOCH]
     for name, value in zip(names, magic_numbers):
         print("{0:<30s} {1}".format(name, value))
     training_generator = get_images_generator(x_train, image_getter, BATCH_SIZE)
     validation_generator = get_images_generator(x_test, image_getter, VALIDATION_BATCH_SIZE)
-    evaluation_generator = get_images_generator(x_evaluate, image_getter, EVALUATION_BATCH)
     history = model.fit_generator(training_generator,
                                   samples_per_epoch=SAMPLES_PER_EPOCH,
                                   verbose=2,
@@ -125,12 +118,6 @@ def main():
                                   nb_val_samples=VALIDATION_SAMPLES_PER_EPOCH,
                                   nb_epoch=EPOCHS)
     print("The validation accuracy is: %.3f." % history.history['val_acc'][-1])
-    metrics = model.evaluate_generator(evaluation_generator,
-                                       val_samples=EVALUATION_SAMPLES)
-    for metric_i in range(len(model.metrics_names)):
-        metric_name = model.metrics_names[metric_i]
-        metric_value = metrics[metric_i]
-        print('{}: {}'.format(metric_name, metric_value))
     model.save('model.h5')
     json_string = model.to_json()
     with open('model.json', 'w') as f:
