@@ -75,7 +75,7 @@ def path_in_images_is_valid(path, path_and_file):
     """ Just check that the first path is the same
         as our path variable
     """
-    first_row = read_csv(path_and_file, skiprows=1, nrows=1)
+    first_row = read_csv(path_and_file, skiprows=2, nrows=1)
     sample_path = first_row.loc[0, 'center']
     return path == sample_path[:len(path)]
 
