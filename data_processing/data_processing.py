@@ -1,4 +1,4 @@
-import data_preprocessing as processing
+import data_processing.data_preprocessing as processing
 import cv2
 import os
 import numpy as np
@@ -14,7 +14,27 @@ def read_log(p, **args):
 
 
 def image_getter(df, N, N_c, N_t, D_c, D_t, features):
+    """ Setups a function with the fields we need
+        df: dataframe received from csv
+        N: total images in dataframe
+        N_c: Number of different camera pictures
+        N_t: Number of transforms to be done
+        D_c: Maps Int -> Camera String
+        D_t: Maps Int -> Transform function
+        features: Array of features to retrieve
+        returns: Function to get images based on index
+    """
     def getter(image_index):
+        """ Curried function that receives an Int Index
+            and returns properties of that image
+            image_index: index of the image to use
+            returns: Tuple(
+                relative path to image,
+                feature set of the image,
+                transform function,
+                camera string
+            )
+        """
         image_camera = image_index % N_c
         image_transformation = image_index // (N * N_c)
         image_row = image_index // (N_c*N_t)
@@ -208,6 +228,7 @@ def test_transforms(image_index, image_getter, batch_size):
                 fig, axes = plt.subplots(1, 2)
                 payload_normalized = transform(image, True)
                 payload = transform(image)
+                print(payload.shape)
                 print('features', features)
                 features = adjust_angle_per_camera(features, camera)
                 print('features', features)
