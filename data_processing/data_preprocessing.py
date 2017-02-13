@@ -6,7 +6,7 @@ import pandas as pd
 def remove_absolute_paths(path, dataframe):
     """ Removes any absolute paths in favor of relative ones
     """
-    def img_path(image): return ''.join(['IMG\\', os.path.split(image)[-1]])
+    def img_path(image): return ''.join(['IMG/', os.path.split(image)[-1]])
     for i, row in dataframe.iterrows():
         for image_type in ['right', 'left', 'center']:
             img = img_path(dataframe.loc[i, image_type])
