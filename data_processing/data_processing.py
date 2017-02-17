@@ -38,7 +38,7 @@ def image_getter(df, N, N_c, N_t, D_c, D_t, features):
         image_camera = image_index % N_c
         image_transformation = image_index // (N * N_c)
         image_row = image_index // (N_c*N_t)
-        return df.loc[image_row, D_c[image_camera]], df.loc[image_row, features].as_matrix(), D_t[image_transformation], D_c[image_camera]
+        return df.loc[image_row, D_c[image_camera]], df.loc[image_row, features].as_matrix()[0:1], D_t[image_transformation], D_c[image_camera]
     return getter
 
 
@@ -46,11 +46,9 @@ def normalize(image_data):
     return image_data/255.-.5
 
 
-def original(image_path, apply_normalize=False):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.cvtColor(cv2.imread(abs_path), cv2.COLOR_BGR2RGB)
-    return normalize(img) if apply_normalize else img
-
+def original_image(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
 
 def high_brightness_image(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -59,24 +57,10 @@ def high_brightness_image(img):
     return cv2.cvtColor(img, cv2.COLOR_HSV2RGB)
 
 
-def high_brightness(image_path, apply_normalize=False):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.imread(abs_path)
-    img = high_brightness_image(img)
-    return normalize(img) if apply_normalize else img
-
-
 def low_brightness_image(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     img[:, :, 2] = img[:, :, 2] * 0.25
     return cv2.cvtColor(img, cv2.COLOR_HSV2RGB)
-
-
-def low_brightness(image_path, apply_normalize=False):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.imread(abs_path)
-    img = low_brightness_image(img)
-    return normalize(img) if apply_normalize else img
 
 
 def adjust_gamma_on_image(image, gamma):
@@ -85,66 +69,48 @@ def adjust_gamma_on_image(image, gamma):
     return cv2.LUT(image, table)
 
 
-def adjust_gamma(image_path, gamma=1.0):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.cvtColor(cv2.imread(abs_path), cv2.COLOR_BGR2RGB)
-    return adjust_gamma_on_image(img, gamma)
+def adjust_gamma_image(img, gamma=1.0):
+    return adjust_gamma_on_image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), gamma)
 
 
-def __gamma_correction(image_path, correction, apply_normalize):
-    if apply_normalize:
-        return normalize(adjust_gamma(image_path, correction))
-    else:
-        return adjust_gamma(image_path, correction)
-
-
-def gamma_correction_05(image_path, apply_normalize=False): return __gamma_correction(image_path, 0.5, apply_normalize)
-def gamma_correction_15(image_path, apply_normalize=False): return __gamma_correction(image_path, 1.5, apply_normalize)
-def gamma_correction_20(image_path, apply_normalize=False): return __gamma_correction(image_path, 2.0, apply_normalize)
-def gamma_correction_25(image_path, apply_normalize=False): return __gamma_correction(image_path, 2.5, apply_normalize)
+def gamma_correction_05(img): return adjust_gamma_image(img, 0.5)
+def gamma_correction_15(img): return adjust_gamma_image(img, 1.5)
+def gamma_correction_20(img): return adjust_gamma_image(img, 2.0)
+def gamma_correction_25(img): return adjust_gamma_image(img, 2.5)
 
 
 def flip_image(img):
     return np.fliplr(img)
 
 
-def flip_original(image_path, apply_normalize=False):
+def flip_original_image(img):
     """ Flips the image
     """
-    abs_path = os.path.abspath(image_path)
-    img = cv2.cvtColor(cv2.imread(abs_path), cv2.COLOR_BGR2RGB)
-    img = flip_image(img)
-    return normalize(img) if apply_normalize else img
+    return flip_image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
 
-def flip_low_brightness(image_path, apply_normalize=False):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.imread(abs_path)
+def flip_low_brightness_image(img):
     img = flip_image(img)
     img = low_brightness_image(img)
-    return normalize(img) if apply_normalize else img
+    return img
 
 
-def flip_high_brightness(image_path, apply_normalize=False):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.imread(abs_path)
+def flip_high_brightness_image(img):
     img = flip_image(img)
     img = high_brightness_image(img)
-    return normalize(img) if apply_normalize else img
+    return img
 
 
-def flip_and_gamma_correction(image_path, gamma, apply_normalize):
-    abs_path = os.path.abspath(image_path)
-    img = cv2.cvtColor(cv2.imread(abs_path), cv2.COLOR_BGR2RGB)
+def flip_and_gamma_correction_image(img, gamma):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = flip_image(img)
     img = adjust_gamma_on_image(img, gamma)
-    return normalize(img) if apply_normalize else img
+    return img
 
-
-def flip_gamma_correction_05(image_path, apply_normalize=False): return flip_and_gamma_correction(image_path, 0.5, apply_normalize)
-def flip_gamma_correction_15(image_path, apply_normalize=False): return flip_and_gamma_correction(image_path, 1.5, apply_normalize)
-def flip_gamma_correction_20(image_path, apply_normalize=False): return flip_and_gamma_correction(image_path, 2.0, apply_normalize)
-def flip_gamma_correction_25(image_path, apply_normalize=False): return flip_and_gamma_correction(image_path, 2.5, apply_normalize)
+def flip_gamma_correction_05(img): return flip_and_gamma_correction_image(img, 0.5)
+def flip_gamma_correction_15(img): return flip_and_gamma_correction_image(img, 1.5)
+def flip_gamma_correction_20(img): return flip_and_gamma_correction_image(img, 2.0)
+def flip_gamma_correction_25(img): return flip_and_gamma_correction_image(img, 2.5)
 
 
 def adjust_angle_per_camera(features, camera):
@@ -187,16 +153,16 @@ def get_images(p='./data'):
     columns_w_features = processing.get_names()[N_c:]
     df[columns_w_features] = df[columns_w_features].astype('float32')
     D_t = {
-        0: original,
-        1: low_brightness,
-        2: high_brightness,
+        0: original_image,
+        1: low_brightness_image,
+        2: high_brightness_image,
         3: gamma_correction_05,
         4: gamma_correction_15,
         5: gamma_correction_20,
         6: gamma_correction_25,
-        7: flip_original,
-        8: flip_low_brightness,
-        9: flip_high_brightness,
+        7: flip_original_image,
+        8: flip_low_brightness_image,
+        9: flip_high_brightness_image,
         10: flip_gamma_correction_05,
         11: flip_gamma_correction_15,
         12: flip_gamma_correction_20,
