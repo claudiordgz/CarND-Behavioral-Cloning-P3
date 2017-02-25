@@ -190,11 +190,13 @@ def test_transforms(image_index, image_getter, batch_size):
         for n_camera in range(3):
             for index in image_index[batch_size*trans+n_camera:]:
                 image, features, transform, camera = image_getter(index)
+                abs_path = os.path.abspath(image)
+                img = cv2.imread(abs_path)
                 features, camera = adjust_properties_per_transform(features, camera, transform)
                 print(camera, image, features, transform)
                 fig, axes = plt.subplots(1, 2)
-                payload_normalized = transform(image, True)
-                payload = transform(image)
+                payload_normalized = transform(img, True)
+                payload = transform(img)
                 print(payload.shape)
                 print('features', features)
                 features = adjust_angle_per_camera(features, camera)

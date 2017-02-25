@@ -1,8 +1,8 @@
 from data_processing import get_images, adjust_properties_per_transform, adjust_angle_per_camera
-from keras.models import Sequential
-from keras.layers import Cropping2D, Lambda
-from keras.layers.core import Dense, Activation, Flatten, Dropout
-from keras.layers.convolutional import Convolution2D, MaxPooling2D
+from keras.models import Model
+from keras.layers import Cropping2D, Lambda, merge, BatchNormalization, Input
+from keras.layers.core import Dense, Activation, Flatten, Dropout, Reshape
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, AveragePooling2D
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -15,30 +15,63 @@ import tensorflow as tf
 tf.python.control_flow_ops = tf
 
 
+def conv2d_bn(input_x, filters, rows, cols, border_mode='same', strides=(1, 1)):
+    """ Combine Convolution2D and BatchNormalization
+    """
+    input_x = Convolution2D(filters, rows, cols,
+                            subsample=strides,
+                            activation='relu',
+                            border_mode=border_mode)(input_x)
+    input_x = BatchNormalization()(input_x)
+    return input_x
+
+
 def get_model():
-    model = Sequential()
-    model.add(Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3)))
-    model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(90, 320, 3)))
-    model.add(Convolution2D(8, 3, 3,
-                            border_mode='valid',
-                            input_shape=(90, 320, 3)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Convolution2D(8, 3, 3,
-                            border_mode='valid'))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Convolution2D(16, 3, 3,
-                            border_mode='valid'))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Flatten(input_shape=(8, 8, 3)))
-    model.add(Dropout(0.5))
-    model.add(Dense(128))
-    model.add(Activation('relu'))
-    model.add(Dense(1))
-    model.add(Activation('softmax'))
-    return model
+    img_input = Input(shape=(160, 320, 3))
+    x = Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3))(img_input)
+    x = Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(90, 320, 3))(x)
+    x = conv2d_bn(x, 8, 3, 3)
+    x = conv2d_bn(x, 16, 3, 3)
+    x = MaxPooling2D((3, 3), strides=(1, 1))(x)
+
+    # Inception Module 1
+    im1_1x1 = conv2d_bn(x, 16, 1, 1)
+
+    im1_5x5 = conv2d_bn(x, 16, 1, 1)
+    im1_5x5 = conv2d_bn(im1_5x5, 8, 5, 5)
+
+    im1_3x3 = conv2d_bn(x, 16, 1, 1)
+    im1_3x3 = conv2d_bn(im1_3x3, 8, 3, 3)
+
+    im1_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
+    im1_max_p = conv2d_bn(im1_max_p, 16, 1, 1)
+    im1_max_p = Reshape((88, 318, 16))(im1_1x1)
+    
+    x = merge([im1_1x1, im1_5x5, im1_3x3, im1_max_p],
+              mode='concat')
+
+    # Inception Module 2
+    im2_1x1 = conv2d_bn(x, 16, 1, 1)
+
+    im2_5x5 = conv2d_bn(x, 16, 1, 1)
+    im2_5x5 = conv2d_bn(im2_5x5, 8, 5, 5)
+
+    im2_3x3 = conv2d_bn(x, 16, 1, 1)
+    im2_3x3 = conv2d_bn(im2_3x3, 8, 3, 3)
+
+    im2_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
+    im2_max_p = conv2d_bn(im2_max_p, 16, 1, 1)
+    im2_max_p = Reshape((88, 318, 16))(im2_1x1)
+    
+    x = merge([im2_1x1, im2_5x5, im2_3x3, im2_max_p],
+              mode='concat')
+    
+    # Fully Connected
+    x = AveragePooling2D((8, 8), strides=(8, 8))(x)
+    x = Dropout(0.5)(x)
+    x = Flatten(name='flatten')(x)
+    x = Dense(1, activation='softmax', name='predictions')(x)
+    return Model(img_input, x)
 
 
 def get_batch_properties(images, image_getter):
@@ -69,40 +102,28 @@ def get_images_generator(images, image_getter, BATCH_SIZE, DEBUG=False):
     IMAGE_WIDTH = 320
     IMAGE_HEIGHT = 160
     CHANNELS = 3
-    batch_images = np.zeros((BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, CHANNELS))
+    batch_images = np.zeros((BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, CHANNELS), np.uint8)
     batch_features = np.zeros(BATCH_SIZE)
     begin_batch = 0
-    N = len(images) + 1
-    while begin_batch+BATCH_SIZE < N:
+    n_images = len(images) + 1
+    while begin_batch+BATCH_SIZE < n_images:
         i = 0
-        batch_dictionary = get_batch_properties(images[begin_batch:begin_batch+BATCH_SIZE], image_getter)
-        if DEBUG:
-            rows = 5
-            cols = BATCH_SIZE // rows
-            fig, axes = plt.subplots(rows, cols)
+        batch_dictionary = get_batch_properties(images[begin_batch:begin_batch+BATCH_SIZE],
+                                                image_getter)
         for img_path in batch_dictionary.keys():
             abs_path = os.path.abspath(img_path)
             img = cv2.imread(abs_path)
             for transform, features, camera in batch_dictionary[img_path]:
-                features_adjusted, camera_adjusted = adjust_properties_per_transform(features, camera, transform)
+                features_adjusted, camera_adjusted = adjust_properties_per_transform(features,
+                                                                                     camera,
+                                                                                     transform)
                 payload = transform(img)
                 steer = adjust_angle_per_camera(features_adjusted, camera_adjusted)
-                if DEBUG:
-                    ax = axes[i // cols, i % cols]
-                    ax.imshow(payload)
-                    s = 'Steer %.5f' %steer[0]
-                    label = 'Camera - {camera}\nTransform - {transform}\n{steer}'.format(camera=camera_adjusted, transform=transform.__name__, steer=s)
-                    ax.set_title(label)
-                    ax.axis('off')
                 batch_position = i % BATCH_SIZE
                 batch_images[batch_position] = payload
                 batch_features[batch_position] = steer[0]
-                i += 1    
-        if DEBUG:
-            plt.subplots_adjust(hspace=0.5)
-            plt.show()      
+                i += 1
         begin_batch += BATCH_SIZE
-        print('new begin: ', begin_batch)
         yield batch_images, batch_features
 
 
@@ -110,12 +131,11 @@ def get_batch_size(total_images):
     """ We want our set of images to be divisible by the
         epochs
     """
-    MIN_EPOCHS = 1
-    MAX_SIZE = 50
-    for i in range(MIN_EPOCHS, MAX_SIZE):
+    min_epochs, max_epochs = 1, 50
+    for i in range(min_epochs, max_epochs):
         if total_images % i == 0:
-            MIN_EPOCHS = i
-    return MIN_EPOCHS
+            min_epochs = i
+    return min_epochs
 
 
 def samples(epochs, total):
@@ -169,13 +189,24 @@ def test_generator():
     image_index_db, image_getter, _ = get_images('./data')
     shuffled_images = shuffle(image_index_db)
     BATCH_SIZE = 30
-    sauce_generator = get_images_generator(shuffled_images, image_getter, BATCH_SIZE, True)
+    sauce_generator = get_images_generator(shuffled_images, image_getter, BATCH_SIZE)
     for i, p in enumerate(sauce_generator):
-        if i == 10:
+        rows = 5
+        cols = BATCH_SIZE // rows
+        fig, axes = plt.subplots(rows, cols)
+        for j, (img, feature) in enumerate(zip(p[0], p[1])):
+            ax = axes[j // cols, j % cols]
+            ax.imshow(img)
+            s = 'Steer %.5f' %feature
+            label = '{steer}'.format(steer=s)
+            ax.set_title(label)
+            ax.axis('off')
+        if i > 10:
             break
-
+        plt.subplots_adjust(hspace=0.5)
+        plt.show() 
 
 if __name__ == '__main__':
-    test_generator()
-    #main()
+    #test_generator()
+    main()
 
