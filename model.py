@@ -46,40 +46,40 @@ def nvidia_model():
 
 def inception_model():
     img_input = Input(shape=(160, 320, 3))
-    x = Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3))(img_input)
-    x = Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(90, 320, 3))(x)
-    x = conv2d_bn(x, 8, 3, 3)
-    x = conv2d_bn(x, 16, 3, 3)
+    x = Lambda(lambda x: x / 255.0 - 0.5)(img_input)
+    x = Cropping2D(cropping=((70, 25), (0, 0)))(x)
+    x = conv2d_bn(x, 24, 3, 3)
+    x = conv2d_bn(x, 48, 3, 3)
     x = MaxPooling2D((3, 3), strides=(1, 1))(x)
 
     # Inception Module 1
-    im1_1x1 = conv2d_bn(x, 16, 1, 1)
+    im1_1x1 = conv2d_bn(x, 32, 1, 1)
 
-    im1_5x5 = conv2d_bn(x, 16, 1, 1)
-    im1_5x5 = conv2d_bn(im1_5x5, 8, 5, 5)
+    im1_5x5 = conv2d_bn(x, 32, 1, 1)
+    im1_5x5 = conv2d_bn(im1_5x5, 16, 5, 5)
 
-    im1_3x3 = conv2d_bn(x, 16, 1, 1)
-    im1_3x3 = conv2d_bn(im1_3x3, 8, 3, 3)
+    im1_3x3 = conv2d_bn(x, 32, 1, 1)
+    im1_3x3 = conv2d_bn(im1_3x3, 16, 3, 3)
 
     im1_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im1_max_p = conv2d_bn(im1_max_p, 16, 1, 1)
-    im1_max_p = Reshape((88, 318, 16))(im1_1x1)
+    im1_max_p = conv2d_bn(im1_max_p, 32, 1, 1)
+    im1_max_p = Reshape((88, 318, 32))(im1_1x1)
     
     x = merge([im1_1x1, im1_5x5, im1_3x3, im1_max_p],
               mode='concat')
 
     # Inception Module 2
-    im2_1x1 = conv2d_bn(x, 16, 1, 1)
+    im2_1x1 = conv2d_bn(x, 32, 1, 1)
 
-    im2_5x5 = conv2d_bn(x, 16, 1, 1)
-    im2_5x5 = conv2d_bn(im2_5x5, 8, 5, 5)
+    im2_5x5 = conv2d_bn(x, 32, 1, 1)
+    im2_5x5 = conv2d_bn(im2_5x5, 16, 5, 5)
 
-    im2_3x3 = conv2d_bn(x, 16, 1, 1)
-    im2_3x3 = conv2d_bn(im2_3x3, 8, 3, 3)
+    im2_3x3 = conv2d_bn(x, 32, 1, 1)
+    im2_3x3 = conv2d_bn(im2_3x3, 16, 3, 3)
 
     im2_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im2_max_p = conv2d_bn(im2_max_p, 16, 1, 1)
-    im2_max_p = Reshape((88, 318, 16))(im2_1x1)
+    im2_max_p = conv2d_bn(im2_max_p, 32, 1, 1)
+    im2_max_p = Reshape((88, 318, 32))(im2_1x1)
     
     x = merge([im2_1x1, im2_5x5, im2_3x3, im2_max_p],
               mode='concat')
@@ -88,7 +88,7 @@ def inception_model():
     x = AveragePooling2D((8, 8), strides=(8, 8))(x)
     x = Dropout(0.5)(x)
     x = Flatten(name='flatten')(x)
-    x = Dense(1, activation='softmax', name='predictions')(x)
+    x = Dense(1, name='predictions')(x)
     return Model(img_input, x)
 
 
@@ -234,6 +234,6 @@ def test_generator():
     
 if __name__ == '__main__':
     #test_generator()
-    #main(inception_model)
-    main(nvidia_model)
+    main(inception_model)
+    #main(nvidia_model)
 
