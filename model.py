@@ -191,8 +191,8 @@ def main(get_model, EPOCHS, plot_loss):
         json_string = model.to_json()
         json.dump(json_string, json_file)
 
+    print(history_object.history.keys())
     if(plot_loss):
-	print(history_object.history.keys())
     	### plot the training and validation loss for each epoch
     	plt.plot(history_object.history['loss'])
     	plt.plot(history_object.history['val_loss'])
