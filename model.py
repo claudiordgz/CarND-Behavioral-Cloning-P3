@@ -2,7 +2,7 @@ from data_processing import get_images, adjust_properties_per_transform, adjust_
 from keras.models import Model
 from keras.layers import Cropping2D, Lambda, merge, BatchNormalization, Input
 from keras.layers.core import Dense, Activation, Flatten, Dropout, Reshape
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, AveragePooling2D
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, AveragePooling2D, ZeroPadding2D
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -53,33 +53,35 @@ def inception_model():
     x = MaxPooling2D((3, 3), strides=(1, 1))(x)
 
     # Inception Module 1
-    im1_1x1 = conv2d_bn(x, 32, 1, 1)
+    im1_1x1 = conv2d_bn(x, 48, 1, 1)
 
     im1_5x5 = conv2d_bn(x, 32, 1, 1)
-    im1_5x5 = conv2d_bn(im1_5x5, 16, 5, 5)
+    im1_5x5 = conv2d_bn(im1_5x5, 48, 5, 5)
 
     im1_3x3 = conv2d_bn(x, 32, 1, 1)
-    im1_3x3 = conv2d_bn(im1_3x3, 16, 3, 3)
+    im1_3x3 = conv2d_bn(im1_3x3, 48, 3, 3)
+    im1_3x3 = conv2d_bn(im1_3x3, 48, 3, 3)
 
     im1_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im1_max_p = conv2d_bn(im1_max_p, 32, 1, 1)
-    im1_max_p = Reshape((88, 318, 32))(im1_1x1)
+    im1_max_p = conv2d_bn(im1_max_p, 48, 1, 1)
+    im1_max_p = ZeroPadding2D(padding=(1,1))(im1_max_p)
     
     x = merge([im1_1x1, im1_5x5, im1_3x3, im1_max_p],
               mode='concat')
 
     # Inception Module 2
-    im2_1x1 = conv2d_bn(x, 32, 1, 1)
+    im2_1x1 = conv2d_bn(x, 48, 1, 1)
 
     im2_5x5 = conv2d_bn(x, 32, 1, 1)
-    im2_5x5 = conv2d_bn(im2_5x5, 16, 5, 5)
+    im2_5x5 = conv2d_bn(im2_5x5, 48, 5, 5)
 
     im2_3x3 = conv2d_bn(x, 32, 1, 1)
-    im2_3x3 = conv2d_bn(im2_3x3, 16, 3, 3)
+    im2_3x3 = conv2d_bn(im2_3x3, 48, 3, 3)
+    im2_3x3 = conv2d_bn(im2_3x3, 48, 3, 3)
 
     im2_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im2_max_p = conv2d_bn(im2_max_p, 32, 1, 1)
-    im2_max_p = Reshape((88, 318, 32))(im2_1x1)
+    im2_max_p = conv2d_bn(im2_max_p, 48, 1, 1)
+    im2_max_p = ZeroPadding2D(padding=(1,1))(im2_max_p)
     
     x = merge([im2_1x1, im2_5x5, im2_3x3, im2_max_p],
               mode='concat')
