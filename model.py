@@ -53,34 +53,34 @@ def inception_model():
     x = MaxPooling2D((3, 3), strides=(1, 1))(x)
 
     # Inception Module 1
-    im1_1x1 = conv2d_bn(x, 48, 1, 1)
+    im1_1x1 = conv2d_bn(x, 16, 1, 1)
 
-    im1_5x5 = conv2d_bn(x, 32, 1, 1)
-    im1_5x5 = conv2d_bn(im1_5x5, 48, 5, 5)
+    im1_5x5 = conv2d_bn(x, 8, 1, 1)
+    im1_5x5 = conv2d_bn(im1_5x5, 16, 5, 5)
 
-    im1_3x3 = conv2d_bn(x, 32, 1, 1)
-    im1_3x3 = conv2d_bn(im1_3x3, 48, 3, 3)
-    im1_3x3 = conv2d_bn(im1_3x3, 48, 3, 3)
+    im1_3x3 = conv2d_bn(x, 8, 1, 1)
+    im1_3x3 = conv2d_bn(im1_3x3, 16, 3, 3)
+    im1_3x3 = conv2d_bn(im1_3x3, 16, 3, 3)
 
     im1_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im1_max_p = conv2d_bn(im1_max_p, 48, 1, 1)
+    im1_max_p = conv2d_bn(im1_max_p, 16, 1, 1)
     im1_max_p = ZeroPadding2D(padding=(1,1))(im1_max_p)
     
     x = merge([im1_1x1, im1_5x5, im1_3x3, im1_max_p],
               mode='concat')
 
     # Inception Module 2
-    im2_1x1 = conv2d_bn(x, 48, 1, 1)
+    im2_1x1 = conv2d_bn(x, 16, 1, 1)
 
-    im2_5x5 = conv2d_bn(x, 32, 1, 1)
-    im2_5x5 = conv2d_bn(im2_5x5, 48, 5, 5)
+    im2_5x5 = conv2d_bn(x, 8, 1, 1)
+    im2_5x5 = conv2d_bn(im2_5x5, 16, 5, 5)
 
-    im2_3x3 = conv2d_bn(x, 32, 1, 1)
-    im2_3x3 = conv2d_bn(im2_3x3, 48, 3, 3)
-    im2_3x3 = conv2d_bn(im2_3x3, 48, 3, 3)
+    im2_3x3 = conv2d_bn(x, 8, 1, 1)
+    im2_3x3 = conv2d_bn(im2_3x3, 16, 3, 3)
+    im2_3x3 = conv2d_bn(im2_3x3, 16, 3, 3)
 
     im2_max_p = MaxPooling2D((3, 3), strides=(1,1))(x)
-    im2_max_p = conv2d_bn(im2_max_p, 48, 1, 1)
+    im2_max_p = conv2d_bn(im2_max_p, 16, 1, 1)
     im2_max_p = ZeroPadding2D(padding=(1,1))(im2_max_p)
     
     x = merge([im2_1x1, im2_5x5, im2_3x3, im2_max_p],
