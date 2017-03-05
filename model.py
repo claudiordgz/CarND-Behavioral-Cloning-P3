@@ -26,7 +26,25 @@ def conv2d_bn(input_x, filters, rows, cols, border_mode='same', strides=(1, 1)):
     return input_x
 
 
-def get_model():
+def nvidia_model():
+    img_input = Input(shape=(160, 320, 3))
+    x = Lambda(lambda x: x / 255.0 - 0.5)(img_input)
+    x = Cropping2D(cropping=((70, 25), (0, 0)))(x)
+    x = conv2d_bn(x, 24, 5, 5, strides=(2, 2))
+    x = conv2d_bn(x, 36, 5, 5, strides=(2, 2))
+    x = conv2d_bn(x, 48, 5, 5, strides=(2, 2))
+    x = conv2d_bn(x, 64, 3, 3)
+    x = conv2d_bn(x, 64, 3, 3)
+    x = Flatten(name='flatten')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(100)(x)
+    x = Dense(50)(x)
+    x = Dense(10)(x)
+    x = Dense(1)(x)
+    return Model(img_input, x)
+
+
+def inception_model():
     img_input = Input(shape=(160, 320, 3))
     x = Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3))(img_input)
     x = Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(90, 320, 3))(x)
@@ -91,7 +109,7 @@ def get_batch_properties(images, image_getter):
     return r
 
 
-def get_images_generator(images, image_getter, BATCH_SIZE, DEBUG=False):
+def get_images_generator(images, image_getter, BATCH_SIZE, n_samples, name=None):
     """ The generator of data
         returns: Tuple(
             numpy array of BATCH_SIZE with images in it,
@@ -105,8 +123,7 @@ def get_images_generator(images, image_getter, BATCH_SIZE, DEBUG=False):
     batch_images = np.zeros((BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, CHANNELS), np.uint8)
     batch_features = np.zeros(BATCH_SIZE)
     begin_batch = 0
-    n_images = len(images) + 1
-    while begin_batch+BATCH_SIZE < n_images:
+    while True:
         i = 0
         batch_dictionary = get_batch_properties(images[begin_batch:begin_batch+BATCH_SIZE],
                                                 image_getter)
@@ -123,45 +140,32 @@ def get_images_generator(images, image_getter, BATCH_SIZE, DEBUG=False):
                 batch_images[batch_position] = payload
                 batch_features[batch_position] = steer[0]
                 i += 1
-        begin_batch += BATCH_SIZE
+        begin_batch = begin_batch + BATCH_SIZE if begin_batch + BATCH_SIZE < n_samples else 0
         yield batch_images, batch_features
 
 
-def get_batch_size(total_images):
+def properties(total_images):
     """ We want our set of images to be divisible by the
         epochs
     """
-    min_epochs, max_epochs = 1, 50
-    for i in range(min_epochs, max_epochs):
-        if total_images % i == 0:
-            min_epochs = i
-    return min_epochs
+    batch_size = 128
+    remainder = total_images % batch_size
+    images = total_images - remainder
+    return batch_size, images # Prevent repeated samples
 
 
-def samples(epochs, total):
-    """ We want the samples to be a multiple of the EPOCHS
-    """
-    samples, i = epochs, 10
-    while samples < 50000:
-        samples = epochs * i
-        i += 2
-    return samples
 
-
-def main():
+def main(get_model):
     image_index_db, image_getter, _ = get_images('./data')
-    x_train, x_test = train_test_split(image_index_db, test_size=0.4)
+    x_train, x_test = train_test_split(image_index_db, test_size=0.3)
     x_train = shuffle(x_train)
     model = get_model()
     model.compile(optimizer='adam',
-                  loss='mse',
-                  metrics=['accuracy'])
+                  loss='mse')
     # MAGIC NUMBERS
-    BATCH_SIZE = get_batch_size(len(x_train))
-    SAMPLES_PER_EPOCH = samples(BATCH_SIZE, len(x_train))
-    VALIDATION_BATCH_SIZE = get_batch_size(len(x_test))
-    VALIDATION_SAMPLES_PER_EPOCH = samples(VALIDATION_BATCH_SIZE, len(x_test))
-    EPOCHS = 5
+    BATCH_SIZE, SAMPLES_PER_EPOCH = properties(len(x_train))
+    VALIDATION_BATCH_SIZE, VALIDATION_SAMPLES_PER_EPOCH = properties(len(x_test))
+    EPOCHS = 3
     names = ['IMAGES IN TRAINING', 'IMAGES IN VALIDATION SET',
              'BATCH SIZE', 'SAMPLES PER EPOCH', 'VALIDATION BATCH SIZE',
              'VALIDATION SAMPLES PER EPOCH']
@@ -170,43 +174,66 @@ def main():
                      VALIDATION_SAMPLES_PER_EPOCH]
     for name, value in zip(names, magic_numbers):
         print("{0:<30s} {1}".format(name, value))
-    training_generator = get_images_generator(x_train, image_getter, BATCH_SIZE)
-    validation_generator = get_images_generator(x_test, image_getter, VALIDATION_BATCH_SIZE)
-    history = model.fit_generator(training_generator,
+    training_generator = get_images_generator(x_train, image_getter, BATCH_SIZE, SAMPLES_PER_EPOCH, 'training')
+    validation_generator = get_images_generator(x_test, image_getter, VALIDATION_BATCH_SIZE, VALIDATION_SAMPLES_PER_EPOCH, 'validation')
+    history_object = model.fit_generator(training_generator,
                                   samples_per_epoch=SAMPLES_PER_EPOCH,
-                                  verbose=2,
+                                  verbose=1,
                                   validation_data=validation_generator,
                                   nb_val_samples=VALIDATION_SAMPLES_PER_EPOCH,
                                   nb_epoch=EPOCHS)
-    print("The validation accuracy is: %.3f." % history.history['val_acc'][-1])
-    model.save('model.h5')
-    json_string = model.to_json()
-    with open('model.json', 'w') as f:
-        json.dump(json_string, f)
+    model_name = './' + get_model.__name__
+    if not os.path.exists(model_name):
+        os.makedirs(model_name)
+    model.save(model_name + '/model.h5')
+    with open(model_name + '/model.json', 'w') as json_file:
+        json_string = model.to_json()
+        json.dump(json_string, json_file)
+
+    print(history_object.history.keys())
+    ### plot the training and validation loss for each epoch
+    plt.plot(history_object.history['loss'])
+    plt.plot(history_object.history['val_loss'])
+    plt.title('model mean squared error loss')
+    plt.ylabel('mean squared error loss')
+    plt.xlabel('epoch')
+    plt.legend(['training set', 'validation set'], loc='upper right')
+    plt.show()
+    import gc
+    gc.collect()
 
 
 def test_generator():
     image_index_db, image_getter, _ = get_images('./data')
-    shuffled_images = shuffle(image_index_db)
-    BATCH_SIZE = 30
-    sauce_generator = get_images_generator(shuffled_images, image_getter, BATCH_SIZE)
+    shuffled_images = image_index_db
+    #shuffled_images = shuffle(image_index_db)
+    BATCH_SIZE, SAMPLES_PER_EPOCH = properties(len(shuffled_images))
+    names = ['IMAGES IN TRAINING', 'BATCH SIZE', 'SAMPLES PER EPOCH']
+    magic_numbers = [len(shuffled_images), BATCH_SIZE, SAMPLES_PER_EPOCH]
+    for name, value in zip(names, magic_numbers):
+        print("{0:<30s} {1}".format(name, value))
+    sauce_generator = get_images_generator(shuffled_images, image_getter, BATCH_SIZE, SAMPLES_PER_EPOCH)
     for i, p in enumerate(sauce_generator):
         rows = 5
-        cols = BATCH_SIZE // rows
+        cols = 30 // rows
         fig, axes = plt.subplots(rows, cols)
-        for j, (img, feature) in enumerate(zip(p[0], p[1])):
+        for j, (img, feature) in enumerate(zip(p[0][:30], p[1][:30])):
             ax = axes[j // cols, j % cols]
             ax.imshow(img)
             s = 'Steer %.5f' %feature
             label = '{steer}'.format(steer=s)
             ax.set_title(label)
             ax.axis('off')
-        if i > 10:
+        if i > 5:
             break
         plt.subplots_adjust(hspace=0.5)
         plt.show() 
 
+    for name, value in zip(names, magic_numbers):
+        print("{0:<30s} {1}".format(name, value))
+    
 if __name__ == '__main__':
     #test_generator()
-    main()
+    #main(inception_model)
+    main(nvidia_model)
 

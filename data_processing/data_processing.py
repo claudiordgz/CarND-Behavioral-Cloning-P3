@@ -144,30 +144,32 @@ def get_images(p='./data'):
     logfile = processing.data_validation(p)
     df = read_log(logfile, skiprows=2)
     N = len(df.index)
-    D_c = {
-        0: 'left',
-        1: 'right',
-        2: 'center'
-    }
+    camera_array = [
+        'center',
+        'left',
+        'right'
+    ]
+    D_c = {i: s for i, s in enumerate(camera_array)}
     N_c = len(D_c) # left, right center cameras
-    columns_w_features = processing.get_names()[N_c:]
+    columns_w_features = processing.get_names()[3:]
     df[columns_w_features] = df[columns_w_features].astype('float32')
-    D_t = {
-        0: original_image,
-        1: low_brightness_image,
-        2: high_brightness_image,
-        3: gamma_correction_05,
-        4: gamma_correction_15,
-        5: gamma_correction_20,
-        6: gamma_correction_25,
-        7: flip_original_image,
-        8: flip_low_brightness_image,
-        9: flip_high_brightness_image,
-        10: flip_gamma_correction_05,
-        11: flip_gamma_correction_15,
-        12: flip_gamma_correction_20,
-        13: flip_gamma_correction_25
-    }
+    transform_array = [
+        original_image,
+        flip_original_image
+#       low_brightness_image,
+#       high_brightness_image,
+#       gamma_correction_05,
+#       gamma_correction_15,
+#       gamma_correction_20,
+#       gamma_correction_25,
+#       flip_low_brightness_image,
+#       flip_high_brightness_image,
+#       flip_gamma_correction_05,
+#       flip_gamma_correction_15,
+#       flip_gamma_correction_20,
+#       flip_gamma_correction_25
+    ]
+    D_t = {i: s for i, s in enumerate(transform_array)}
     N_t = len(D_t)  # transforms we will be applying
     N_images = N*N_c*N_t
     images = list(range(0, N_images))
