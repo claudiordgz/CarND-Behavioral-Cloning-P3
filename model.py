@@ -26,6 +26,22 @@ def conv2d_bn(input_x, filters, rows, cols, border_mode='same', strides=(1, 1)):
     return input_x
 
 
+def small_model():
+    img_input = Input(shape=(160, 320, 3))
+    x = Lambda(lambda x: x / 255.0 - 0.5)(img_input)
+    x = Cropping2D(cropping=((70, 25), (0, 0)))(x)
+    x = conv2d_bn(x, 24, 5, 5, strides=(2, 2))
+    x = conv2d_bn(x, 36, 5, 5, strides=(2, 2))
+    x = conv2d_bn(x, 64, 3, 3)
+    x = Flatten(name='flatten')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(50)(x)
+    x = Dropout(0.5)(x)
+    x = Dense(10)(x)
+    x = Dense(1)(x)
+    return Model(img_input, x)
+
+
 def nvidia_model():
     img_input = Input(shape=(160, 320, 3))
     x = Lambda(lambda x: x / 255.0 - 0.5)(img_input)
@@ -236,6 +252,7 @@ def test_generator():
     
 if __name__ == '__main__':
     #test_generator()
-    main(inception_model, 2, False)
+    #main(inception_model, 2, False)
     #main(nvidia_model, 3, True)
+    main(small_model, 5, True)
 
